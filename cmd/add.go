@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/jcelaya775/gwt/git"
+	"github.com/jcelaya775/gwt/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -10,16 +11,14 @@ import (
 // var checkout bool
 var pull bool
 var noSync bool
-var force bool
+var forceAdd bool
 var baseBranch = "main"
 
 func init() {
-	// TODO: Assume new branch if branch is not found locally or remotely
-	//cloneCmd.Flags().StringVar(&newBranch, "b", "", "Create a new branch")
-	//cloneCmd.Flags().BoolVar(&checkout, "checkout", true, "Checkout branch in the new worktree. Sets remote tracking if <branch> exists on remote")
+	addCmd.Flags().StringVar(&baseBranch, "b", "", "Create a new branch")
 	addCmd.Flags().BoolVarP(&pull, "pull", "p", false, "Pull the base branch before creating the worktree")
 	addCmd.Flags().BoolVar(&noSync, "no-sync", false, "Do not fetch remote branches before creating the worktree")
-	addCmd.Flags().BoolVarP(&force, "force", "f", false, "Checkout branch even if already checked out in another worktree")
+	addCmd.Flags().BoolVarP(&forceRemove, "forceRemove", "f", false, "Checkout branch even if already checked out in another worktree")
 	rootCmd.AddCommand(addCmd)
 }
 
@@ -34,8 +33,17 @@ var addCmd = &cobra.Command{
 			return err
 		}
 
+		c, err := config.LoadConfig(g.GetWorktreeRoot())
+		if err != nil {
+			return err
+		}
+
+		// TODO: Only fetch if remote branches are needed to be searched (branch doesn't exist locally)
 		if !noSync {
 			if err := g.Fetch(); err != nil {
+				return err
+			}
+			if err != nil {
 				return err
 			}
 		}
@@ -50,12 +58,7 @@ var addCmd = &cobra.Command{
 				commitish = args[1]
 			}
 
-			err = g.AddWorktree(git.AddWorktreeOptions{
-				Branch:    branch,
-				Commitish: commitish,
-				Pull:      pull,
-				Force:     force,
-			})
+			err = g.AddWorktree(c, branch, baseBranch, commitish, pull, forceRemove)
 			if err != nil {
 				return err
 			}

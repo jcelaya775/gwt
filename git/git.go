@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/charmbracelet/huh/spinner"
+	"github.com/jcelaya775/gwt/internal/config"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -29,31 +30,34 @@ func (g *Git) GetRepoName() string {
 	return filepath.Base(g.worktreeRoot)
 }
 
-func (g *Git) AddWorktree(opts AddWorktreeOptions) error {
+func (g *Git) AddWorktree(config *config.Config, branch string, baseBranch string, commitish string, pull bool, force bool) error {
 	cmdArgs := []string{"-C", g.worktreeRoot, "worktree", "add"}
-	if opts.Branch == "" {
+
+	if branch == "" {
 		// TODO: If worktreeRoot/commit is not provided, fzf/huh select from list of local and remote branches (avoid duplicates)
 		fmt.Println("Not yet implemented: branch selection UI")
 		return nil
 	} else {
-		existsLocally, err := g.BranchExistsLocally(opts.Branch)
+		existsLocally, err := g.BranchExistsLocally(branch)
 		if err != nil {
 			return err
 		}
-		existsRemotely, err := g.BranchExistsRemotely(opts.Branch)
+		existsRemotely, err := g.BranchExistsRemotely(branch)
 		if err != nil {
 			return err
 		}
-		if opts.Commitish != "" {
-			cmdArgs = append(cmdArgs, "-b", opts.Branch, opts.Branch, opts.Commitish)
+
+		if commitish != "" {
+			cmdArgs = append(cmdArgs, "-b", branch, branch, commitish)
 		} else {
-			// Assume opts.Branch is opts.Branch name, and does not include a relative or absolute opts.Branch (TODO: validate)
+			// TODO: Add base branch flag (use config.Defaults.BaseBranch as default)
 			if existsLocally {
-				cmdArgs = append(cmdArgs, opts.Branch, "--checkout", opts.Branch)
+				cmdArgs = append(cmdArgs, branch, "--checkout", branch)
 			} else if existsRemotely {
-				cmdArgs = append(cmdArgs, "-b", opts.Branch, opts.Branch, "--checkout", fmt.Sprintf("origin/%s", opts.Branch))
+				cmdArgs = append(cmdArgs, "-b", branch, branch, "--checkout", fmt.Sprintf("origin/%s", branch))
 			} else {
-				cmdArgs = append(cmdArgs, "-b", opts.Branch, opts.Branch, "main") // TODO: detect default opts.Branch from config ⭐
+				// TODO: What if user wants to branch off of current branch? Add flag to specify base branch
+				cmdArgs = append(cmdArgs, "-b", branch, branch, config.Defaults.BaseBranch)
 			}
 		}
 	}
@@ -63,6 +67,56 @@ func (g *Git) AddWorktree(opts AddWorktreeOptions) error {
 		return errors.New(string(output))
 	}
 	return nil
+}
+
+func (g *Git) RemoveWorktree(worktree string, force, keepBranch bool) error {
+	branch, err := g.GetWorktreeBranch(worktree)
+
+	cmdArgs := []string{"-C", g.worktreeRoot, "worktree", "remove"}
+	if force {
+		cmdArgs = append(cmdArgs, "--force")
+	}
+	cmdArgs = append(cmdArgs, worktree)
+
+	output, err := exec.Command("git", cmdArgs...).CombinedOutput()
+	if err != nil {
+		return errors.New(string(output))
+	}
+
+	if !keepBranch {
+		if err != nil {
+			return err
+		}
+		branchOutput, branchErr := exec.Command("git", "-C", g.worktreeRoot, "branch", "-D", branch).CombinedOutput()
+		if branchErr != nil {
+			return errors.New(string(branchOutput))
+		}
+	}
+
+	return nil
+}
+
+func (g *Git) GetWorktreeBranch(worktree string) (string, error) {
+	cmdArgs := []string{"-C", g.worktreeRoot, "worktree", "list"}
+	output, err := exec.Command("git", cmdArgs...).Output()
+	if err != nil {
+		return "", errors.New(string(output))
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		worktreeAbsPath := fields[0]
+		worktreeRelPath := strings.TrimPrefix(worktreeAbsPath, g.worktreeRoot)
+		if worktreeRelPath == worktree {
+			if len(fields) >= 3 {
+				unparsedBranch := fields[2]
+				return strings.TrimSuffix(strings.TrimPrefix(unparsedBranch, "["), "]"), nil
+			}
+			return "", errors.New("could not determine branch for worktree")
+		}
+	}
+	return "", errors.New("worktree not found")
 }
 
 func (g *Git) ListWorktrees() ([]string, error) {
@@ -130,7 +184,11 @@ func getWorktreeRoot() (string, error) {
 
 	gitDir := strings.TrimSpace(string(output))
 	if strings.HasSuffix(gitDir, ".git") {
-		return fmt.Sprintf("%s/", filepath.Dir(gitDir)), nil
+		gitDirAbsolute, err := filepath.Abs(gitDir)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s/", filepath.Dir(gitDirAbsolute)), nil
 	} else {
 		return "", errors.New("could not find git repository root containing .git. Please use gwt clone to clone the repository")
 	}

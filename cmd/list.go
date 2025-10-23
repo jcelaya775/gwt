@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/jcelaya775/gwt/git"
 	"github.com/spf13/cobra"
+	"path/filepath"
 )
 
+var absolutePath bool
+
 func init() {
+	listCmd.Flags().BoolVarP(&absolutePath, "absolute", "a", false, "Show absolute paths")
 	rootCmd.AddCommand(listCmd)
 }
 
@@ -25,7 +30,11 @@ var listCmd = &cobra.Command{
 		}
 
 		for _, wt := range worktrees {
-			println(wt)
+			if absolutePath {
+				fmt.Println(filepath.Join(g.GetWorktreeRoot(), wt))
+			} else {
+				fmt.Println(wt)
+			}
 		}
 
 		return nil

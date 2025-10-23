@@ -44,6 +44,8 @@ version: "1.0"
 
 # Default settings for worktrees
 defaults:
+  # Default base branch for new worktrees
+  base_branch: main
 
 # Commands that run after creating a worktree
 init_commands:
