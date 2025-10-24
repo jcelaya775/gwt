@@ -108,12 +108,14 @@ func (g *Git) AddWorktree(config *config.Config, branch string, commitish string
 			cmdArgs = append(cmdArgs, parsedBranch, "--checkout", baseBranch)
 		} else if existsRemotely {
 			baseBranch = branch
-			cmdArgs = append(cmdArgs, "-b", parsedBranch, parsedBranch, "--checkout", parsedBranch)
+			cmdArgs = append(cmdArgs, "-b", parsedBranch, parsedBranch, "--checkout", branch)
 		} else {
 			baseBranch = config.Defaults.BaseBranch
 			cmdArgs = append(cmdArgs, "-b", parsedBranch, parsedBranch, baseBranch)
 		}
 	}
+
+	worktreeExists, err := g.WorktreeExists(baseBranch)
 
 	if !noPull && !strings.HasPrefix(baseBranch, "origin/") {
 		var err error
@@ -121,7 +123,14 @@ func (g *Git) AddWorktree(config *config.Config, branch string, commitish string
 		_ = spinner.New().
 			Title(fmt.Sprintf("Pulling base branch '%s'... (press ctrl-c to skip)", baseBranch)).
 			Action(func() {
-				output, innerErr := exec.Command("git", "-C", baseBranchPath, "pull", "origin", fmt.Sprintf("%s:%s", baseBranch, baseBranch)).CombinedOutput()
+				var output []byte
+				var innerErr error
+				if worktreeExists {
+					output, innerErr = exec.Command("git", "-C", baseBranchPath, "pull", "origin", fmt.Sprintf("%s:%s", baseBranch, baseBranch)).CombinedOutput()
+				} else {
+					output, innerErr = exec.Command("git", "-C", g.worktreeRoot, "fetch", "origin", fmt.Sprintf("%s:%s", baseBranch, baseBranch)).CombinedOutput()
+				}
+
 				if innerErr != nil {
 					err = errors.New(string(output))
 				}
@@ -206,6 +215,10 @@ func (g *Git) ListBranches(onlyLocal, hideBranchesWithWorktrees bool) ([]string,
 		}
 	}
 
+	ignoreBranches := map[string]bool{
+		"origin/HEAD": true,
+	}
+
 	cmdArgs := []string{"branch", "--format=%(refname:short)"}
 	if !onlyLocal {
 		cmdArgs = append(cmdArgs, "-a")
@@ -221,6 +234,19 @@ func (g *Git) ListBranches(onlyLocal, hideBranchesWithWorktrees bool) ([]string,
 		branch := strings.TrimSpace(line)
 		parsedBranch := strings.TrimPrefix(strings.TrimPrefix(branch, "origin"), "/")
 		if parsedBranch == "" {
+			continue
+		}
+
+		if strings.HasPrefix(branch, "origin/") {
+			branchWithoutWTExistsLocally, err := g.BranchExistsLocally(parsedBranch)
+			if err != nil {
+				return nil, err
+			}
+			if branchWithoutWTExistsLocally {
+				continue
+			}
+		}
+		if _, ignore := ignoreBranches[branch]; ignore {
 			continue
 		}
 		if _, branchHasWorktree := worktreeBranches[parsedBranch]; hideBranchesWithWorktrees && branchHasWorktree {

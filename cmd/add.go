@@ -50,6 +50,12 @@ var addCmd = &cobra.Command{
 			return err
 		}
 
+		if !noSync {
+			if err := g.Fetch(); err != nil {
+				return err
+			}
+		}
+
 		if len(args) == 0 {
 			branchesToSelectFrom, err := g.ListBranches(false, true)
 			if err != nil {
@@ -81,12 +87,6 @@ var addCmd = &cobra.Command{
 		}
 		if worktreeAlreadyExists {
 			return fmt.Errorf("worktree for branch '%s' already exists", branch)
-		}
-
-		if !noSync {
-			if err := g.Fetch(); err != nil {
-				return err
-			}
 		}
 
 		err = g.AddWorktree(c, branch, commitish, noPull, forceAdd)
