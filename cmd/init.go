@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/charmbracelet/huh"
-	"github.com/jcelaya775/gwt/git"
+	"github.com/jcelaya775/gwt/internal/git"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
