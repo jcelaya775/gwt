@@ -12,11 +12,12 @@ import (
 
 var noPull bool
 var noSync bool
+var forceAdd bool
 
 func init() {
 	addCmd.Flags().BoolVar(&noPull, "no-pull", false, "Do not pull the base branch before creating the worktree")
 	addCmd.Flags().BoolVar(&noSync, "no-sync", false, "Do not fetch remote branches before creating the worktree")
-	addCmd.Flags().BoolVarP(&forceRemove, "force", "f", false, "Checkout branch even if already checked out in another worktree")
+	addCmd.Flags().BoolVarP(&forceAdd, "force", "f", false, "Checkout branch even if already checked out in another worktree")
 	rootCmd.AddCommand(addCmd)
 }
 
@@ -88,7 +89,7 @@ var addCmd = &cobra.Command{
 			}
 		}
 
-		err = g.AddWorktree(c, branch, commitish, noPull, forceRemove)
+		err = g.AddWorktree(c, branch, commitish, noPull, forceAdd)
 		if err != nil {
 			return err
 		}
