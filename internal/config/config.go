@@ -24,7 +24,7 @@ const (
 	DefaultBaseBranch = "main"
 )
 
-// LoadConfig loads configuration from .gwt in the repository root
+// LoadConfig loads configuration from .gwt.yml in the repository root
 func LoadConfig(repoRoot string) (*Config, error) {
 	configPath := filepath.Join(repoRoot, ConfigFileName)
 
@@ -38,13 +38,13 @@ func LoadConfig(repoRoot string) (*Config, error) {
 		}, nil
 	}
 
-	data, err := os.ReadFile(configPath)
+	configBytes, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	if err := yaml.Unmarshal(configBytes, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
