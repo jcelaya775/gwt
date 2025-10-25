@@ -89,30 +89,29 @@ func (g *Git) AddWorktree(config *config.Config, branch string, commitish string
 	cmdArgs := []string{"-C", g.worktreeRoot, "worktree", "add"}
 
 	var baseBranch string
+
+	existsLocally, err := g.BranchExistsLocally(branch)
+	if err != nil {
+		return err
+	}
+	existsRemotely, err := g.BranchExistsRemotely(branch)
+	if err != nil {
+		return err
+	}
+
 	parsedBranch := strings.TrimPrefix(branch, "origin/")
 	if commitish != "" {
 		baseBranch = commitish
 		cmdArgs = append(cmdArgs, "-b", parsedBranch, parsedBranch, "--checkout", commitish)
+	} else if existsLocally {
+		baseBranch = parsedBranch
+		cmdArgs = append(cmdArgs, parsedBranch, "--checkout", baseBranch)
+	} else if existsRemotely {
+		baseBranch = branch
+		cmdArgs = append(cmdArgs, "-b", parsedBranch, parsedBranch, "--checkout", branch)
 	} else {
-		existsLocally, err := g.BranchExistsLocally(branch)
-		if err != nil {
-			return err
-		}
-		existsRemotely, err := g.BranchExistsRemotely(branch)
-		if err != nil {
-			return err
-		}
-
-		if existsLocally {
-			baseBranch = parsedBranch
-			cmdArgs = append(cmdArgs, parsedBranch, "--checkout", baseBranch)
-		} else if existsRemotely {
-			baseBranch = branch
-			cmdArgs = append(cmdArgs, "-b", parsedBranch, parsedBranch, "--checkout", branch)
-		} else {
-			baseBranch = config.Defaults.BaseBranch
-			cmdArgs = append(cmdArgs, "-b", parsedBranch, parsedBranch, baseBranch)
-		}
+		baseBranch = config.Defaults.BaseBranch
+		cmdArgs = append(cmdArgs, "-b", parsedBranch, parsedBranch, baseBranch)
 	}
 
 	worktreeExists, err := g.WorktreeExists(baseBranch)
@@ -126,8 +125,9 @@ func (g *Git) AddWorktree(config *config.Config, branch string, commitish string
 				var output []byte
 				var innerErr error
 				if worktreeExists {
+					// TODO: Check for uncommitted changes or merge conflicts, and prompt user with confirmation message before pulling
 					output, innerErr = exec.Command("git", "-C", baseBranchPath, "pull", "origin", fmt.Sprintf("%s:%s", baseBranch, baseBranch)).CombinedOutput()
-				} else {
+				} else if existsRemotely {
 					output, innerErr = exec.Command("git", "-C", g.worktreeRoot, "fetch", "origin", fmt.Sprintf("%s:%s", baseBranch, baseBranch)).CombinedOutput()
 				}
 
