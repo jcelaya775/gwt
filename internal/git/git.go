@@ -117,6 +117,7 @@ func (g *Git) AddWorktree(config *config.Config, branch string, commitish string
 	worktreeExists, err := g.WorktreeExists(baseBranch)
 
 	if !noPull && !strings.HasPrefix(baseBranch, "origin/") {
+		// TODO: Check for uncommitted changes or merge conflicts, and prompt user with confirmation message before pulling
 		var err error
 		baseBranchPath := filepath.Join(g.worktreeRoot, baseBranch)
 		_ = spinner.New().
@@ -125,9 +126,8 @@ func (g *Git) AddWorktree(config *config.Config, branch string, commitish string
 				var output []byte
 				var innerErr error
 				if worktreeExists {
-					// TODO: Check for uncommitted changes or merge conflicts, and prompt user with confirmation message before pulling
 					output, innerErr = exec.Command("git", "-C", baseBranchPath, "pull", "origin", fmt.Sprintf("%s:%s", baseBranch, baseBranch)).CombinedOutput()
-				} else if existsRemotely {
+				} else if existsLocally && existsRemotely {
 					output, innerErr = exec.Command("git", "-C", g.worktreeRoot, "fetch", "origin", fmt.Sprintf("%s:%s", baseBranch, baseBranch)).CombinedOutput()
 				}
 
@@ -326,6 +326,9 @@ func (*Git) BranchExistsLocally(branch string) (bool, error) {
 }
 
 func (*Git) BranchExistsRemotely(branch string) (bool, error) {
+	if !strings.HasPrefix(branch, "origin/") {
+		branch = "origin/" + branch
+	}
 	output, err := exec.Command("git", "branch", "-r", "--list", branch).CombinedOutput()
 	if err != nil {
 		return false, errors.New(string(output))
