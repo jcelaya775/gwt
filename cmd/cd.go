@@ -17,7 +17,6 @@ package cmd
 //
 //		}
 //
-//		g, err := git.New()
 //		if err != nil {
 //			return err
 //		}

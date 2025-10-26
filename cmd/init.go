@@ -9,37 +9,29 @@ import (
 	"path/filepath"
 )
 
-func init() {
-	rootCmd.AddCommand(initCmd)
-}
-
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Initialize gwt configuration in the current git repository",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		g, err := git.New()
-		if err != nil {
-			return err
-		}
-
-		configPath := filepath.Join(g.GetWorktreeRoot(), ".gwt.yml")
-		if _, err := os.Stat(configPath); err == nil {
-			var confirm bool
-			err := huh.NewConfirm().
-				Title("Config file already exists. Do you want to overwrite it?").
-				Affirmative("Yes").
-				Negative("No").
-				Value(&confirm).
-				Run()
-			if err != nil {
-				return err
+func Init(g *git.Git) *cobra.Command {
+	return &cobra.Command{
+		Use:   "init",
+		Short: "Initialize gwt configuration in the current git repository",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			configPath := filepath.Join(g.GetWorktreeRoot(), ".gwt.yml")
+			if _, err := os.Stat(configPath); err == nil {
+				var confirm bool
+				err := huh.NewConfirm().
+					Title("Config file already exists. Do you want to overwrite it?").
+					Affirmative("Yes").
+					Negative("No").
+					Value(&confirm).
+					Run()
+				if err != nil {
+					return err
+				}
+				if !confirm {
+					return nil
+				}
 			}
-			if !confirm {
-				return nil
-			}
-		}
 
-		configContent := `# gwt configuration
+			configContent := `# gwt configuration
 version: "1.0"
 
 # Default settings for worktrees
@@ -55,11 +47,12 @@ init_commands:
 remove_commands:
   - echo "Worktree removed!"
 `
-		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-			return err
-		}
+			if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+				return err
+			}
 
-		fmt.Println("Initialized gwt configuration at", configPath)
-		return nil
-	},
+			fmt.Println("Initialized gwt configuration at", configPath)
+			return nil
+		},
+	}
 }
