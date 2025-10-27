@@ -44,6 +44,7 @@ func Execute() {
 	rootCmd.AddCommand(Clone(g))
 	rootCmd.AddCommand(List(g))
 	rootCmd.AddCommand(Remove(g, s))
+	rootCmd.AddCommand(Init(g))
 
 	err = rootCmd.Execute()
 	if err != nil {

@@ -141,6 +141,8 @@ func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, con
 				}
 			}
 
+			fmt.Println("Init commands:", c.InitCommands)
+
 			return nil
 		},
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jcelaya775/gwt/internal/shell"
 	"os/exec"
+	"runtime"
 )
 
 type Connector struct {
@@ -66,7 +67,12 @@ func (c *Connector) jetbrainsConnect(ide jetbrainsIDE, dir string) error {
 	}
 
 	var err error
-	if _, err = exec.LookPath("setsid"); err == nil {
+	if _, err = exec.LookPath("open"); err == nil && runtime.GOOS == "darwin" {
+		output, cmdErr := c.shell.Cmd("open", "-a", "WebStorm", dir)
+		if cmdErr != nil {
+			err = errors.New(output)
+		}
+	} else if _, err = exec.LookPath("setsid"); err == nil {
 		cmd := fmt.Sprintf("%s %s >/dev/null 2>&1 &", ide, dir)
 		output, cmdErr := c.shell.Cmd("setsid", "sh", "-c", cmd)
 		if cmdErr != nil {
@@ -75,11 +81,6 @@ func (c *Connector) jetbrainsConnect(ide jetbrainsIDE, dir string) error {
 	} else if _, err = exec.LookPath("nohup"); err == nil {
 		cmd := fmt.Sprintf("%s %s >/dev/null 2>&1 &", ide, dir)
 		output, cmdErr := c.shell.Cmd("nohup", cmd)
-		if cmdErr != nil {
-			err = errors.New(output)
-		}
-	} else if _, err = exec.LookPath("open"); err == nil {
-		output, cmdErr := c.shell.Cmd("open", "-a", "WebStorm", dir)
 		if cmdErr != nil {
 			err = errors.New(output)
 		}
