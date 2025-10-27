@@ -5,8 +5,12 @@ package cmd
 
 import (
 	"github.com/jcelaya775/gwt/internal/config"
+	"github.com/jcelaya775/gwt/internal/connector"
 	"github.com/jcelaya775/gwt/internal/git"
+	"github.com/jcelaya775/gwt/internal/home"
 	"github.com/jcelaya775/gwt/internal/selecter"
+	"github.com/jcelaya775/gwt/internal/shell"
+	"github.com/jcelaya775/gwt/internal/zoxide"
 	"log"
 	"os"
 
@@ -31,11 +35,16 @@ func Execute() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 	s := selecter.New()
+	h := home.NewHome()
+	sh := shell.NewShell(h)
+	z := zoxide.New(sh)
+	conn := connector.New(sh)
 
-	rootCmd.AddCommand(Add(c, g, s))
+	rootCmd.AddCommand(Add(c, g, s, z, conn))
 	rootCmd.AddCommand(Clone(g))
 	rootCmd.AddCommand(List(g))
 	rootCmd.AddCommand(Remove(g, s))
+	rootCmd.AddCommand(Cd(g))
 
 	err = rootCmd.Execute()
 	if err != nil {

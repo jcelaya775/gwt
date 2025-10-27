@@ -7,6 +7,7 @@ import (
 	"github.com/jcelaya775/gwt/internal/config"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -85,18 +86,22 @@ func (g *Git) CloneRepo(repoURL string, dir string) error {
 	return nil
 }
 
-func (g *Git) AddWorktree(config *config.Config, branch string, commitish string, noPull bool, force bool) error {
+func (g *Git) AddWorktree(config *config.Config, branch string, commitish string, noPull bool, force bool) (string, error) {
 	cmdArgs := []string{"-C", g.worktreeRoot, "worktree", "add"}
 
 	var baseBranch string
 
 	existsLocally, err := g.BranchExistsLocally(branch)
 	if err != nil {
-		return err
+		return "", err
 	}
 	existsRemotely, err := g.BranchExistsRemotely(branch)
 	if err != nil {
-		return err
+		return "", err
+	}
+
+	if !existsRemotely && strings.HasPrefix(branch, "origin/") {
+		return "", fmt.Errorf("branch '%s' does not exist remotely. Remove the 'origin/' prefix to create a new branch", branch)
 	}
 
 	parsedBranch := strings.TrimPrefix(branch, "origin/")
@@ -137,7 +142,7 @@ func (g *Git) AddWorktree(config *config.Config, branch string, commitish string
 			}).
 			Run()
 		if err != nil {
-			return errors.Join(err, fmt.Errorf("failed to pull base branch. You can retry without pulling using the --no-pull flag"))
+			return "", errors.Join(err, fmt.Errorf("failed to pull base branch. You can retry without pulling using the --no-pull flag"))
 		}
 	}
 
@@ -147,10 +152,20 @@ func (g *Git) AddWorktree(config *config.Config, branch string, commitish string
 
 	output, err := exec.Command("git", cmdArgs...).CombinedOutput()
 	if err != nil {
-		return errors.New(string(output))
+		return "", errors.New(string(output))
 	}
 	fmt.Println(string(output))
-	return nil
+
+	worktreePathRegex, err := regexp.Compile("Preparing worktree.*'(.*)'")
+	if err != nil {
+		return "", err
+	}
+	matches := worktreePathRegex.FindStringSubmatch(string(output))
+	if len(matches) < 2 {
+		return "", errors.New("could not parse worktree path from git output")
+	}
+	worktreePath := filepath.Join(g.worktreeRoot, matches[1])
+	return worktreePath, nil
 }
 
 func (g *Git) RemoveWorktree(worktree string, force, keepBranch bool) error {

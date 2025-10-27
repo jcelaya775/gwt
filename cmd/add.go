@@ -4,16 +4,26 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jcelaya775/gwt/internal/config"
+	"github.com/jcelaya775/gwt/internal/connector"
 	"github.com/jcelaya775/gwt/internal/git"
 	"github.com/jcelaya775/gwt/internal/selecter"
+	"github.com/jcelaya775/gwt/internal/zoxide"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
-func Add(c *config.Config, g *git.Git, s *selecter.Select) *cobra.Command {
+func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Connector) *cobra.Command {
 	var noPull bool
 	var noSync bool
 	var forceAdd bool
+	var seshConnect bool
+	var webStormConnect bool
+	var goLandConnect bool
+	var pyCharmConnect bool
+	var intelliJConnect bool
+	var cLionConnect bool
+	var riderConnect bool
+	var dataGripConnect bool
 
 	addCmd := &cobra.Command{
 		Use:     "add <branch> [commit-ish]",
@@ -71,11 +81,66 @@ func Add(c *config.Config, g *git.Git, s *selecter.Select) *cobra.Command {
 				return fmt.Errorf("worktree for branch '%s' already exists", branch)
 			}
 
-			err = g.AddWorktree(c, branch, commitish, noPull, forceAdd)
+			worktreePath, err := g.AddWorktree(c, branch, commitish, noPull, forceAdd)
 			if err != nil {
 				return err
 			}
 			fmt.Printf("Worktree for branch '%s' added successfully.\n", branch)
+
+			err = z.AddPath(worktreePath)
+			if err != nil {
+				return err
+			}
+			if seshConnect {
+				err = conn.SeshConnect(worktreePath)
+				if err != nil {
+					return err
+				}
+			}
+
+			if webStormConnect {
+				err = conn.WebstormConnect(worktreePath)
+				if err != nil {
+					return err
+				}
+			}
+			if goLandConnect {
+				err = conn.GoLandConnect(worktreePath)
+				if err != nil {
+					return err
+				}
+			}
+			if pyCharmConnect {
+				err = conn.PyCharmConnect(worktreePath)
+				if err != nil {
+					return err
+				}
+			}
+			if intelliJConnect {
+				err = conn.IntelliJConnect(worktreePath)
+				if err != nil {
+					return err
+				}
+			}
+			if cLionConnect {
+				err = conn.CLionConnect(worktreePath)
+				if err != nil {
+					return err
+				}
+			}
+			if riderConnect {
+				err = conn.RiderConnect(worktreePath)
+				if err != nil {
+					return err
+				}
+			}
+			if dataGripConnect {
+				err = conn.DataGripConnect(worktreePath)
+				if err != nil {
+					return err
+				}
+			}
+
 			return nil
 		},
 	}
@@ -83,6 +148,14 @@ func Add(c *config.Config, g *git.Git, s *selecter.Select) *cobra.Command {
 	addCmd.Flags().BoolVar(&noPull, "no-pull", false, "Do not pull the base branch before creating the worktree")
 	addCmd.Flags().BoolVar(&noSync, "no-sync", false, "Do not fetch remote branches before creating the worktree")
 	addCmd.Flags().BoolVarP(&forceAdd, "force", "f", false, "Checkout branch even if already checked out in another worktree")
+	addCmd.Flags().BoolVar(&seshConnect, "sesh", false, "Connect to the worktree with seshConnect")
+	addCmd.Flags().BoolVar(&webStormConnect, "webstorm", false, "Open the new worktree in WebStorm")
+	addCmd.Flags().BoolVar(&intelliJConnect, "idea", false, "Open the new worktree in IntelliJ IDEA")
+	addCmd.Flags().BoolVar(&pyCharmConnect, "pycharm", false, "Open the new worktree in PyCharm")
+	addCmd.Flags().BoolVar(&cLionConnect, "clion", false, "Open the new worktree in CLion")
+	addCmd.Flags().BoolVar(&riderConnect, "rider", false, "Open the new worktree in Rider")
+	addCmd.Flags().BoolVar(&goLandConnect, "goland", false, "Open the new worktree in GoLand")
+	addCmd.Flags().BoolVar(&dataGripConnect, "datagrip", false, "Open the new worktree in DataGrip")
 
 	return addCmd
 }
