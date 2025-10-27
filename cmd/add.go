@@ -3,16 +3,22 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/jcelaya775/gwt/internal/config"
 	"github.com/jcelaya775/gwt/internal/connector"
 	"github.com/jcelaya775/gwt/internal/git"
 	"github.com/jcelaya775/gwt/internal/selecter"
+	"github.com/jcelaya775/gwt/internal/shell"
 	"github.com/jcelaya775/gwt/internal/zoxide"
 	"github.com/spf13/cobra"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Connector) *cobra.Command {
+func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Connector, sh shell.Shell) *cobra.Command {
 	var noPull bool
 	var noSync bool
 	var forceAdd bool
@@ -85,7 +91,8 @@ func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, con
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Worktree for branch '%s' added successfully.\n", branch)
+			boldStyle := lipgloss.NewStyle().Bold(true)
+			fmt.Printf("Worktree for branch '%s' added successfully.\n\n", boldStyle.Render(branch))
 
 			err = z.AddPath(worktreePath)
 			if err != nil {
@@ -141,7 +148,36 @@ func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, con
 				}
 			}
 
-			fmt.Println("Init commands:", c.InitCommands)
+			var styledCommand string
+			greenStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
+			for i, command := range c.InitCommands {
+				var execCmd *exec.Cmd
+				if seshConnect {
+					session := filepath.Base(worktreePath)
+					execCmd = exec.Command("tmux", "send-keys", "-t", session, command, "C-m")
+					execCmd.Stdout = os.Stdout
+					execCmd.Stderr = os.Stderr
+					execCmd.Stdin = os.Stdin
+
+					commandText := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500")).Render(command)
+					styledCommand = greenStyle.Render(fmt.Sprintf("tmux send-keys -t %s ", session)) +
+						commandText + greenStyle.Render(" C-m")
+				} else {
+					execCmd = exec.Command("sh", "-c", command)
+					execCmd.Dir = worktreePath
+					execCmd.Stdout = os.Stdout
+					execCmd.Stderr = os.Stderr
+					execCmd.Stdin = os.Stdin
+
+					styledCommand = greenStyle.Render(command)
+				}
+
+				fmt.Println(boldStyle.Render(fmt.Sprintf("️➡️ Running init command %d of %s: %s...",
+					i+1, strconv.Itoa(len(c.InitCommands)), styledCommand)))
+				if err := execCmd.Run(); err != nil {
+					return fmt.Errorf("error running init command '%s': %w", command, err)
+				}
+			}
 
 			return nil
 		},

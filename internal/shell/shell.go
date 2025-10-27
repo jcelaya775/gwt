@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"errors"
 	"github.com/jcelaya775/gwt/internal/home"
 	"os/exec"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 type Shell interface {
 	Cmd(cmd string, arg ...string) (string, error)
+	CmdWithDir(dir string, cmd string, arg ...string) (string, error)
 	ListCmd(cmd string, arg ...string) ([]string, error)
 	PrepareCmd(cmd string, replacements map[string]string) ([]string, error)
 }
@@ -26,7 +28,24 @@ func (c *RealShell) Cmd(cmd string, args ...string) (string, error) {
 		return "", err
 	}
 	output, err := exec.Command(foundCmd, args...).CombinedOutput()
-	return strings.TrimSpace(string(output)), err
+	if err != nil {
+		return "", errors.New(string(output))
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func (c *RealShell) CmdWithDir(dir string, cmd string, args ...string) (string, error) {
+	foundCmd, err := exec.LookPath(cmd)
+	if err != nil {
+		return "", err
+	}
+	command := exec.Command(foundCmd, args...)
+	command.Dir = dir
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return "", errors.New(string(output))
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 func (c *RealShell) ListCmd(cmd string, arg ...string) ([]string, error) {

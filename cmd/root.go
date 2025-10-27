@@ -40,7 +40,7 @@ func Execute() {
 	z := zoxide.New(sh)
 	conn := connector.New(sh)
 
-	rootCmd.AddCommand(Add(c, g, s, z, conn))
+	rootCmd.AddCommand(Add(c, g, s, z, conn, sh))
 	rootCmd.AddCommand(Clone(g))
 	rootCmd.AddCommand(List(g))
 	rootCmd.AddCommand(Remove(g, s))
