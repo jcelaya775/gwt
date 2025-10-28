@@ -16,11 +16,13 @@ type Git struct {
 }
 
 func New() (*Git, error) {
+	return &Git{}, nil
+}
+
+func (g *Git) SetWorktreeRoot() error {
 	worktreeRoot, err := getWorktreeRoot()
-	if err != nil {
-		return nil, err
-	}
-	return &Git{worktreeRoot: worktreeRoot}, nil
+	g.worktreeRoot = worktreeRoot
+	return err
 }
 
 func (g *Git) GetWorktreeRoot() string {

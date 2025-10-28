@@ -16,6 +16,10 @@ func Remove(g *git.Git, s *selecter.Select) *cobra.Command {
 		Short:   "Remove a git worktree",
 		Aliases: []string{"rm"},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			err := g.SetWorktreeRoot()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
 			worktrees, err := g.ListWorktrees()
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
@@ -24,6 +28,13 @@ func Remove(g *git.Git, s *selecter.Select) *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			worktrees := args
+
+			if g.GetWorktreeRoot() == "" {
+				err := g.SetWorktreeRoot()
+				if err != nil {
+					return err
+				}
+			}
 
 			if len(worktrees) == 0 {
 				availableWorktrees, err := g.ListWorktrees()

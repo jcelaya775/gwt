@@ -4,7 +4,6 @@ Copyright © 2025 Jorge Celaya jcelaya775@gmail.com
 package cmd
 
 import (
-	"github.com/jcelaya775/gwt/internal/config"
 	"github.com/jcelaya775/gwt/internal/connector"
 	"github.com/jcelaya775/gwt/internal/git"
 	"github.com/jcelaya775/gwt/internal/home"
@@ -30,17 +29,13 @@ func Execute() {
 	if err != nil {
 		log.Fatalf("failed to initialize git: %v", err)
 	}
-	c, err := config.LoadConfig(g.GetWorktreeRoot())
-	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
-	}
 	s := selecter.New()
 	h := home.NewHome()
 	sh := shell.NewShell(h)
 	z := zoxide.New(sh)
 	conn := connector.New(sh)
 
-	rootCmd.AddCommand(Add(c, g, s, z, conn, sh))
+	rootCmd.AddCommand(Add(g, s, z, conn, sh))
 	rootCmd.AddCommand(Clone(g))
 	rootCmd.AddCommand(List(g))
 	rootCmd.AddCommand(Remove(g, s))

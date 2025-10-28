@@ -14,6 +14,10 @@ func Init(g *git.Git) *cobra.Command {
 		Use:   "init",
 		Short: "Initialize gwt configuration in the current git repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			err := g.SetWorktreeRoot()
+			if err != nil {
+				return err
+			}
 			configPath := filepath.Join(g.GetWorktreeRoot(), ".gwt.yml")
 			if _, err := os.Stat(configPath); err == nil {
 				var confirm bool

@@ -16,6 +16,10 @@ func List(g *git.Git) *cobra.Command {
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			err := g.SetWorktreeRoot()
+			if err != nil {
+				return err
+			}
 			worktrees, err := g.ListWorktrees()
 			if err != nil {
 				return err

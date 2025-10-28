@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Connector, sh shell.Shell) *cobra.Command {
+func Add(g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Connector, sh shell.Shell) *cobra.Command {
 	var noPull bool
 	var noSync bool
 	var forceAdd bool
@@ -31,6 +31,7 @@ func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, con
 	var riderConnect bool
 	var dataGripConnect bool
 
+	var c *config.Config
 	addCmd := &cobra.Command{
 		Use:     "add <branch> [commit-ish]",
 		Short:   "Add a new worktree",
@@ -40,6 +41,14 @@ func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, con
 			if len(args) > 1 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
+			err := g.SetWorktreeRoot()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			c, err = config.LoadConfig(g.GetWorktreeRoot())
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
 			branches, err := g.ListBranches(false, true)
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
@@ -48,6 +57,19 @@ func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, con
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var branch, commitish string
+
+			if g.GetWorktreeRoot() == "" {
+				if err := g.SetWorktreeRoot(); err != nil {
+					return err
+				}
+			}
+			if c == nil {
+				var err error
+				c, err = config.LoadConfig(g.GetWorktreeRoot())
+				if err != nil {
+					return err
+				}
+			}
 
 			if !noSync {
 				if err := g.Fetch(); err != nil {
@@ -186,7 +208,7 @@ func Add(c *config.Config, g *git.Git, s *selecter.Select, z *zoxide.Zoxide, con
 	addCmd.Flags().BoolVar(&noPull, "no-pull", false, "Do not pull the base branch before creating the worktree")
 	addCmd.Flags().BoolVar(&noSync, "no-sync", false, "Do not fetch remote branches before creating the worktree")
 	addCmd.Flags().BoolVarP(&forceAdd, "force", "f", false, "Checkout branch even if already checked out in another worktree")
-	addCmd.Flags().BoolVar(&seshConnect, "sesh", false, "Connect to the worktree with seshConnect")
+	addCmd.Flags().BoolVar(&seshConnect, "sesh", false, "Connect to the worktree with sesh")
 	addCmd.Flags().BoolVar(&webStormConnect, "webstorm", false, "Open the new worktree in WebStorm")
 	addCmd.Flags().BoolVar(&intelliJConnect, "idea", false, "Open the new worktree in IntelliJ IDEA")
 	addCmd.Flags().BoolVar(&pyCharmConnect, "pycharm", false, "Open the new worktree in PyCharm")
