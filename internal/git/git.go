@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/jcelaya775/gwt/internal/config"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -194,6 +195,30 @@ func (g *Git) RemoveWorktree(worktree string, force, keepBranch bool) error {
 		}
 	}
 
+	if err = g.removeEmptyParentDirs(worktree); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *Git) removeEmptyParentDirs(worktree string) error {
+	worktreePath := filepath.Join(g.worktreeRoot, worktree)
+	parentDir := filepath.Dir(worktreePath)
+	for parentDir != g.worktreeRoot {
+		dirEntries, err := os.ReadDir(parentDir)
+		if err != nil {
+			return err
+		}
+		if len(dirEntries) == 0 {
+			if err := os.Remove(parentDir); err != nil {
+				return err
+			}
+			parentDir = filepath.Dir(parentDir)
+		} else {
+			break
+		}
+	}
 	return nil
 }
 
