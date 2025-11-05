@@ -4,12 +4,13 @@ Copyright © 2025 Jorge Celaya jcelaya775@gmail.com
 package cmd
 
 import (
-	"github.com/jcelaya775/gwt/internal/connector"
-	"github.com/jcelaya775/gwt/internal/git"
-	"github.com/jcelaya775/gwt/internal/home"
-	"github.com/jcelaya775/gwt/internal/selecter"
-	"github.com/jcelaya775/gwt/internal/shell"
-	"github.com/jcelaya775/gwt/internal/zoxide"
+	_connector "github.com/jcelaya775/gwt/internal/connector"
+	_git "github.com/jcelaya775/gwt/internal/git"
+	_home "github.com/jcelaya775/gwt/internal/home"
+	_selecter "github.com/jcelaya775/gwt/internal/selecter"
+	_sesh "github.com/jcelaya775/gwt/internal/sesh"
+	_shell "github.com/jcelaya775/gwt/internal/shell"
+	_zoxide "github.com/jcelaya775/gwt/internal/zoxide"
 	"log"
 	"os"
 
@@ -25,21 +26,22 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	log.SetFlags(0)
 
-	g, err := git.New()
+	git, err := _git.New()
 	if err != nil {
 		log.Fatalf("failed to initialize git: %v", err)
 	}
-	s := selecter.New()
-	h := home.NewHome()
-	sh := shell.NewShell(h)
-	z := zoxide.New(sh)
-	conn := connector.New(sh)
+	selecter := _selecter.New()
+	home := _home.NewHome()
+	shell := _shell.NewShell(home)
+	zoxide := _zoxide.New(shell)
+	connector := _connector.New(shell)
+	sesh := _sesh.New(shell)
 
-	rootCmd.AddCommand(Add(g, s, z, conn, sh))
-	rootCmd.AddCommand(Clone(g))
-	rootCmd.AddCommand(List(g))
-	rootCmd.AddCommand(Remove(g, s))
-	rootCmd.AddCommand(Init(g))
+	rootCmd.AddCommand(Add(git, selecter, zoxide, connector))
+	rootCmd.AddCommand(Clone(git))
+	rootCmd.AddCommand(List(git))
+	rootCmd.AddCommand(Remove(git, sesh, selecter))
+	rootCmd.AddCommand(Init(git))
 
 	err = rootCmd.Execute()
 	if err != nil {

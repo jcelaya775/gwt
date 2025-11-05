@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func Clone(g *git.Git) *cobra.Command {
+func Clone(git *git.Git) *cobra.Command {
 	return &cobra.Command{
 		Use:   "clone <repo> [dir]",
 		Short: "Clone a git repository in a worktree setup",
@@ -17,7 +17,7 @@ func Clone(g *git.Git) *cobra.Command {
 				dir = args[1]
 			}
 
-			err := g.CloneRepo(repoURL, dir)
+			err := git.CloneRepo(repoURL, dir)
 			if err != nil {
 				return err
 			}

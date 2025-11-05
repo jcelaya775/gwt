@@ -4,21 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/jcelaya775/gwt/internal/config"
+	_config "github.com/jcelaya775/gwt/internal/config"
 	"github.com/jcelaya775/gwt/internal/connector"
 	"github.com/jcelaya775/gwt/internal/git"
 	"github.com/jcelaya775/gwt/internal/selecter"
-	"github.com/jcelaya775/gwt/internal/shell"
+	"github.com/jcelaya775/gwt/internal/utils"
 	"github.com/jcelaya775/gwt/internal/zoxide"
 	"github.com/spf13/cobra"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
 	"strings"
 )
 
-func Add(g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Connector, sh shell.Shell) *cobra.Command {
+func Add(git *git.Git, selecter *selecter.Select, zoxide *zoxide.Zoxide, connector *connector.Connector) *cobra.Command {
 	var noPull bool
 	var noSync bool
 	var forceAdd bool
@@ -31,7 +27,6 @@ func Add(g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Conne
 	var riderConnect bool
 	var dataGripConnect bool
 
-	var c *config.Config
 	addCmd := &cobra.Command{
 		Use:     "add <branch> [commit-ish]",
 		Short:   "Add a new worktree",
@@ -41,15 +36,11 @@ func Add(g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Conne
 			if len(args) > 1 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			err := g.SetWorktreeRoot()
+			err := git.SetWorktreeRoot()
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
-			c, err = config.LoadConfig(g.GetWorktreeRoot())
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			branches, err := g.ListBranches(false, true)
+			branches, err := git.ListBranches(false, true)
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
@@ -58,27 +49,25 @@ func Add(g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Conne
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var branch, commitish string
 
-			if g.GetWorktreeRoot() == "" {
-				if err := g.SetWorktreeRoot(); err != nil {
-					return err
-				}
-			}
-			if c == nil {
-				var err error
-				c, err = config.LoadConfig(g.GetWorktreeRoot())
-				if err != nil {
+			if git.GetWorktreeRoot() == "" {
+				if err := git.SetWorktreeRoot(); err != nil {
 					return err
 				}
 			}
 
+			config, err := _config.LoadConfig(git.GetWorktreeRoot())
+			if err != nil {
+				return err
+			}
+
 			if !noSync {
-				if err := g.Fetch(); err != nil {
+				if err := git.Fetch(); err != nil {
 					return err
 				}
 			}
 
 			if len(args) == 0 {
-				branchesToSelectFrom, err := g.ListBranches(false, true)
+				branchesToSelectFrom, err := git.ListBranches(false, true)
 				if err != nil {
 					return err
 				}
@@ -87,7 +76,7 @@ func Add(g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Conne
 					return errors.New("no branches available to select from")
 				}
 
-				branch, err = s.Select("Select a branch to create a worktree:", branchesToSelectFrom)
+				branch, err = selecter.Select("Select a branch to create a worktree:", branchesToSelectFrom)
 				if err != nil {
 					return err
 				}
@@ -101,7 +90,7 @@ func Add(g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Conne
 				commitish = args[1]
 			}
 
-			worktreeAlreadyExists, err := g.WorktreeExists(strings.TrimPrefix(branch, "origin/"))
+			worktreeAlreadyExists, err := git.WorktreeExists(strings.TrimPrefix(branch, "origin/"))
 			if err != nil {
 				return err
 			}
@@ -109,96 +98,60 @@ func Add(g *git.Git, s *selecter.Select, z *zoxide.Zoxide, conn *connector.Conne
 				return fmt.Errorf("worktree for branch '%s' already exists", branch)
 			}
 
-			worktreePath, err := g.AddWorktree(c, branch, commitish, noPull, forceAdd)
+			worktreePath, err := git.AddWorktree(config, branch, commitish, noPull, forceAdd)
 			if err != nil {
 				return err
 			}
 			boldStyle := lipgloss.NewStyle().Bold(true)
-			fmt.Printf("Worktree for branch '%s' added successfully.\n\n", boldStyle.Render(branch))
+			fmt.Printf("Worktree for branch %s added successfully.\n\n", boldStyle.Render(branch))
 
-			err = z.AddPath(worktreePath)
-			if err != nil {
+			if err = zoxide.AddPath(worktreePath); err != nil {
 				return err
 			}
 			if seshConnect {
-				err = conn.SeshConnect(worktreePath)
-				if err != nil {
+				if err = connector.SeshConnect(worktreePath); err != nil {
 					return err
 				}
 			}
 
 			if webStormConnect {
-				err = conn.WebstormConnect(worktreePath)
-				if err != nil {
+				if err = connector.WebstormConnect(worktreePath); err != nil {
 					return err
 				}
 			}
 			if goLandConnect {
-				err = conn.GoLandConnect(worktreePath)
-				if err != nil {
+				if err = connector.GoLandConnect(worktreePath); err != nil {
 					return err
 				}
 			}
 			if pyCharmConnect {
-				err = conn.PyCharmConnect(worktreePath)
-				if err != nil {
+				if err = connector.PyCharmConnect(worktreePath); err != nil {
 					return err
 				}
 			}
 			if intelliJConnect {
-				err = conn.IntelliJConnect(worktreePath)
-				if err != nil {
+				if err = connector.IntelliJConnect(worktreePath); err != nil {
 					return err
 				}
 			}
 			if cLionConnect {
-				err = conn.CLionConnect(worktreePath)
-				if err != nil {
+				if err = connector.CLionConnect(worktreePath); err != nil {
 					return err
 				}
 			}
 			if riderConnect {
-				err = conn.RiderConnect(worktreePath)
-				if err != nil {
+				if err = connector.RiderConnect(worktreePath); err != nil {
 					return err
 				}
 			}
 			if dataGripConnect {
-				err = conn.DataGripConnect(worktreePath)
-				if err != nil {
+				if err = connector.DataGripConnect(worktreePath); err != nil {
 					return err
 				}
 			}
 
-			var styledCommand string
-			greenStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
-			for i, command := range c.InitCommands {
-				var execCmd *exec.Cmd
-				if seshConnect {
-					session := filepath.Base(worktreePath)
-					execCmd = exec.Command("tmux", "send-keys", "-t", session, command, "C-m")
-					execCmd.Stdout = os.Stdout
-					execCmd.Stderr = os.Stderr
-					execCmd.Stdin = os.Stdin
-
-					commandText := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500")).Render(command)
-					styledCommand = greenStyle.Render(fmt.Sprintf("tmux send-keys -t %s ", session)) +
-						commandText + greenStyle.Render(" C-m")
-				} else {
-					execCmd = exec.Command("sh", "-c", command)
-					execCmd.Dir = worktreePath
-					execCmd.Stdout = os.Stdout
-					execCmd.Stderr = os.Stderr
-					execCmd.Stdin = os.Stdin
-
-					styledCommand = greenStyle.Render(command)
-				}
-
-				fmt.Println(boldStyle.Render(fmt.Sprintf("️➡️ Running init command %d of %s: %s...",
-					i+1, strconv.Itoa(len(c.InitCommands)), styledCommand)))
-				if err := execCmd.Run(); err != nil {
-					return fmt.Errorf("error running init command '%s': %w", command, err)
-				}
+			if err = utils.RunCommands(config.InitCommands, worktreePath, seshConnect, ""); err != nil {
+				return err
 			}
 
 			return nil

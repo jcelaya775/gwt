@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-func List(g *git.Git) *cobra.Command {
+func List(git *git.Git) *cobra.Command {
 	var absolutePath bool
 
 	var listCmd = &cobra.Command{
@@ -16,18 +16,18 @@ func List(g *git.Git) *cobra.Command {
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := g.SetWorktreeRoot()
+			err := git.SetWorktreeRoot()
 			if err != nil {
 				return err
 			}
-			worktrees, err := g.ListWorktrees()
+			worktrees, err := git.ListWorktrees()
 			if err != nil {
 				return err
 			}
 
 			for _, wt := range worktrees {
 				if absolutePath {
-					fmt.Println(filepath.Join(g.GetWorktreeRoot(), wt))
+					fmt.Println(filepath.Join(git.GetWorktreeRoot(), wt))
 				} else {
 					fmt.Println(wt)
 				}
