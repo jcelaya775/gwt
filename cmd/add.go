@@ -161,7 +161,7 @@ func Add(git *git.Git, selecter *selecter.Select, zoxide *zoxide.Zoxide, connect
 	addCmd.Flags().BoolVar(&noPull, "no-pull", false, "Do not pull the base branch before creating the worktree")
 	addCmd.Flags().BoolVar(&noSync, "no-sync", false, "Do not fetch remote branches before creating the worktree")
 	addCmd.Flags().BoolVarP(&forceAdd, "force", "f", false, "Checkout branch even if already checked out in another worktree")
-	addCmd.Flags().BoolVar(&seshConnect, "sesh", false, "Connect to the worktree with sesh")
+	addCmd.Flags().BoolVar(&seshConnect, "sesh", false, "Connect to the worktree with Sesh")
 	addCmd.Flags().BoolVar(&webStormConnect, "webstorm", false, "Open the new worktree in WebStorm")
 	addCmd.Flags().BoolVar(&intelliJConnect, "idea", false, "Open the new worktree in IntelliJ IDEA")
 	addCmd.Flags().BoolVar(&pyCharmConnect, "pycharm", false, "Open the new worktree in PyCharm")

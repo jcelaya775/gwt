@@ -8,7 +8,6 @@ import (
 	_git "github.com/jcelaya775/gwt/internal/git"
 	_home "github.com/jcelaya775/gwt/internal/home"
 	_selecter "github.com/jcelaya775/gwt/internal/selecter"
-	_sesh "github.com/jcelaya775/gwt/internal/sesh"
 	_shell "github.com/jcelaya775/gwt/internal/shell"
 	_zoxide "github.com/jcelaya775/gwt/internal/zoxide"
 	"log"
@@ -35,12 +34,11 @@ func Execute() {
 	shell := _shell.NewShell(home)
 	zoxide := _zoxide.New(shell)
 	connector := _connector.New(shell)
-	sesh := _sesh.New(shell)
 
 	rootCmd.AddCommand(Add(git, selecter, zoxide, connector))
 	rootCmd.AddCommand(Clone(git))
 	rootCmd.AddCommand(List(git))
-	rootCmd.AddCommand(Remove(git, sesh, selecter))
+	rootCmd.AddCommand(Remove(git, selecter))
 	rootCmd.AddCommand(Init(git))
 
 	err = rootCmd.Execute()

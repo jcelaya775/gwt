@@ -6,7 +6,6 @@ import (
 	_config "github.com/jcelaya775/gwt/internal/config"
 	"github.com/jcelaya775/gwt/internal/git"
 	"github.com/jcelaya775/gwt/internal/selecter"
-	"github.com/jcelaya775/gwt/internal/sesh"
 	"github.com/jcelaya775/gwt/internal/utils"
 	"github.com/spf13/cobra"
 	"path/filepath"
@@ -15,7 +14,7 @@ import (
 var forceRemove bool
 var keepBranch bool
 
-func Remove(git *git.Git, sesh *sesh.Sesh, selecter *selecter.Select) *cobra.Command {
+func Remove(git *git.Git, selecter *selecter.Select) *cobra.Command {
 	removeCmd := &cobra.Command{
 		Use:     "remove [worktree...]",
 		Short:   "Remove a git worktree",
