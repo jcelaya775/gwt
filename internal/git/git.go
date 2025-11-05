@@ -134,7 +134,7 @@ func (g *Git) AddWorktree(config *config.Config, branch string, commitish string
 				var output []byte
 				var innerErr error
 				if worktreeExists {
-					output, innerErr = exec.Command("git", "-C", baseBranchPath, "pull", "origin", fmt.Sprintf("%s:%s", baseBranch, baseBranch)).CombinedOutput()
+					output, innerErr = exec.Command("git", "-C", baseBranchPath, "pull").CombinedOutput()
 				} else if existsLocally && existsRemotely {
 					output, innerErr = exec.Command("git", "-C", g.worktreeRoot, "fetch", "origin", fmt.Sprintf("%s:%s", baseBranch, baseBranch)).CombinedOutput()
 				}
